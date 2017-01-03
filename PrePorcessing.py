@@ -38,7 +38,7 @@ def next_batch():
     global current, up_to_subfile
 
     subfile = 0
-    for i in range(3, 0,-1):
+    for i in range(3, 0, -1):
         if up_to_subfile[i] is True:
             subfile = i
             break
