@@ -16,6 +16,7 @@ rnn_size = 128  # make this bigger
 '''
 
 
+
 x = tf.placeholder('float', [None, n_chunks, chunk_size])
 y = tf.placeholder('float')
 
@@ -37,7 +38,10 @@ def recurrent_neural_network(x):
 
 
 def train_neural_network(x):
-    audio_to_mfccs()    # I put this here..
+
+    # Calculating mfccs vectors!!!
+    audio_to_mfccs()
+
     prediction = recurrent_neural_network(x)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(prediction, y))
     optimizer = tf.train.AdamOptimizer().minimize(cost)
@@ -47,11 +51,11 @@ def train_neural_network(x):
 
         for epoch in range(hm_epochs):
             epoch_loss = 0
-            for _ in range(int(4 * num_of_audio_in_language / batch_size)):   # int(mnist.train.num_examples / batch_size)
+            for _ in range(int((4 * num_of_audio_in_language) / batch_size)):   # int(mnist.train.num_examples / batch_size)
                 epoch_x, epoch_y = next_batch()    # mnist.train.next_batch(batch_size)
-                epoch_x = np.asarray(epoch_x)   # # my code
-                # epoch_x = epoch_x.reshape((batch_size, n_chunks, chunk_size))
 
+                epoch_x = epoch_x.reshape((batch_size, n_chunks, chunk_size))
+                print('Ok\tepoch:',epoch,'iter:',_)
                 _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
                 epoch_loss += c
 
