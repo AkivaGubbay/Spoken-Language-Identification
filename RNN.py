@@ -56,7 +56,7 @@ def train_neural_network(x):
             epoch_loss = 0
 
             for _ in range(int((4 * num_of_audio_in_language) / batch_size)):   # int(mnist.train.num_examples / batch_size)
-                print('Ok\tepoch:', epoch, 'iter:', _)
+                # print('Ok\tepoch:', epoch, 'iter:', _)
                 # epoch_x is of passed as shape: (1 X coeff X time). 1 is actually the batch_size.
                 epoch_x, epoch_y = next_batch()    # mnist.train.next_batch(batch_size)
                 # print('epoch_x:', epoch_x, '\n')
@@ -68,7 +68,7 @@ def train_neural_network(x):
                 try:
                     epoch_x = epoch_x.reshape(batch_size, n_chunks, chunk_size)
                 except:
-                    print('reshape problem\tepoch:', epoch, 'iter:', _)
+                    print('reshape problem.\tepoch:', epoch, 'iter:', _)
                     continue
 
                 _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
@@ -80,26 +80,23 @@ def train_neural_network(x):
         accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
 
 
+        total_accuracy = 0
+        for i in range(int((4 * num_of_audio_in_language) / batch_size)):
 
-        # Error said that it needs to be of size (3,5) and I was feeding it (?,3,5)
-        # Trying to make the test file the right shape..
-        '''
-        test_audio = 'b0351.wav'
-        test_mfcc = getMfccs(test_audio)
-        test_input = []
-        for i in range(NUM_OF_COEFF, chunk_size):
-            # test_input =
-        print('test_mfcc: ', test_mfcc)
-        label = [1, 0, 0, 0]
-        '''
+            epoch_x, label = next_batch()
 
-        epoch_x, label = next_batch()
+            try:
+                currect_test = accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label})
+            except:
+                print('Accuracy reshape problem.')
+                continue
 
-
-        try:
+            total_accuracy += currect_test
             print('Accuracy:',
-              accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label}))  # accuracy.eval({x: mnist.test.images.reshape((-1, n_chunks, chunk_size)), y: mnist.test.labels}))
-        except:
-            print('Accuracy reshape problem.')
+                  currect_test)  # accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label}))  # accuracy.eval({x: mnist.test.images.reshape((-1, n_chunks, chunk_size)), y: mnist.test.labels}))
+
+        print('Total Accuracy: ', (total_accuracy / (4 * num_of_audio_in_language)) * 100, '%')
+
+
 
 train_neural_network(x)

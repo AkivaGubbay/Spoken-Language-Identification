@@ -1,16 +1,16 @@
 
 # /////////////////////////Mine:
-NUM_OF_COEFF = 3   # 10
+NUM_OF_COEFF = 10   # 10
 TIME_S = 30     # 30
-TIME_F = 35    # 100
+TIME_F = 80    # 100
 current_batch = 0
 all_mfcc_vectors = []
-num_of_audio_in_language = 10  # 41
+num_of_audio_in_language = 100  # 41
 
 
 # ///////////////
 
-hm_epochs = 3   # A lot more..
+hm_epochs = 30   # A lot more..
 n_classes = 4
 batch_size = 1
 chunk_size = (TIME_F - TIME_S)  # length of time
