@@ -1,4 +1,7 @@
 import os
+
+import numpy
+
 from Parameters import *
 from Generate_MFCC import getMfccs
 import numpy as np
@@ -17,52 +20,63 @@ def audio_to_mfccs():
         for audio_file in os.listdir(lang_dir)[:num_of_audio_in_language]:
             audio_dir = lang_dir + '/' + audio_file
             mfcc = getMfccs(audio_dir)
-            # print(mfcc)
             all_mfcc_vectors.append(mfcc)
-    # break
-    #print('all_mfcc_vectors rows:', len(all_mfcc_vectors))
-    #print('all_mfcc_vectors cols:', len(all_mfcc_vectors[0]))
-    #print('all_mfcc_vectors')
-    #for line in all_mfcc_vectors:
-        #print(line)
-    #print('all_mfcc_vectors', all_mfcc_vectors)
-    #print('all_mfcc_vectors:')
-    #for line in all_mfcc_vectors:
-        #print(line, ', ')
 
-
-
-current = 0
 up_to_subfile = [True, False, False, False]
-def next_batch():
-    global current, up_to_subfile
 
+def next_batch():
+    global current_batch, up_to_subfile
+    # Determine which sub-file we are up too.
+    # So I can pass real classification.
     subfile = 0
     for i in range(3, 0, -1):
         if up_to_subfile[i] is True:
             subfile = i
             break
 
-    if current >= num_of_audio_in_language:
-        for i in range(0, 3):
-            if up_to_subfile[i] is False:
-                up_to_subfile[i] = True
-                subfile = i
-                current = 0
-                break
+    # Case: finished a sub-file.
+    if current_batch >= num_of_audio_in_language:
+        # Case: finished all audio files.
+        if up_to_subfile[3] is True:
+            # Start from beginning for next epoch.
+            current_batch = 0
+            up_to_subfile = [True, False, False, False]
+        # Case: just finished a certain sub-file:
+        else:
+            for i in range(0, 4):
+                if up_to_subfile[i] is False:
+                    # Next sub-file.
+                    up_to_subfile[i] = True
+                    subfile = i
+                    # Start the count again.
+                    current_batch = 0
+                    break
 
+    # Index in 'all_mfcc_vectors':
+    start = (subfile * num_of_audio_in_language) + current_batch
 
-    start = (subfile * num_of_audio_in_language) + current
+    '''
+    # printing info
+    print('current_batch:', current_batch)
+    print('subfile:', subfile)
+    print('start:', start)
+    print('up_to_subfile:', up_to_subfile, '\n')
+    '''
 
-    if start >= 4 * num_of_audio_in_language:
-        # print('MY ERROR: out of audio files bounds!!!!')
-        start = 0
+    # update 'current_batch' for next time.
+    current_batch += 1
+    # I need to pass epoch_x, epoch_y as numpy arrays:
+    # batch_y = real classification of audio.
+    try:
+        epoch_y = numpy.zeros(shape=(batch_size, 4))
+        # [0][subfile] because it's a list that holds one list,
+        # that is the hot vector.
+        epoch_y[0][subfile] = 1
+    except:
+        print('my Error reshaping batch_y.')
+    epoch_x = all_mfcc_vectors[start]
+    return epoch_x, epoch_y
 
-    # end = current + 1
-    current += 1
-    real_classification = [0, 0, 0, 0]
-    real_classification[subfile] = 1
-    return all_mfcc_vectors[start], real_classification
 
 
 # audio_to_mfccs()

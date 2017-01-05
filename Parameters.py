@@ -1,11 +1,11 @@
 
 # /////////////////////////Mine:
-NUM_OF_COEFF = 10   # 10
+NUM_OF_COEFF = 3   # 10
 TIME_S = 30     # 30
-TIME_F = 100    # 100
+TIME_F = 35    # 100
 current_batch = 0
 all_mfcc_vectors = []
-num_of_audio_in_language = 50  # 41
+num_of_audio_in_language = 10  # 41
 
 
 # ///////////////

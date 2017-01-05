@@ -2,17 +2,25 @@ import numpy as np
 from Generate_MFCC import *
 
 
-audio_file = 'audio/per0003.wav'
+y = np.zeros(shape=(1, 4))
 
-mfcc = getMfccs(audio_file)
+print(y)
 
-print('rows:', len(mfcc))
-print('cols:', len(mfcc[0]))
-# print(mfcc)
+y[0][2] = 1
+print(y)
 
-mfcc_reshaped = mfcc.reshape(1, 10, 70)
-print(mfcc_reshaped)
-print('wrap:', len(mfcc_reshaped))
-print('rows:', len(mfcc_reshaped[0]))
-print('cols:', len(mfcc_reshaped[0][0]))
+'''
+test_audio = 'b0351.wav'
+test_mfcc = getMfccs(test_audio)
+print('test_mfcc: ', test_mfcc)
+label = [1, 0, 0, 0]
 
+test = []
+
+for i in range(NUM_OF_COEFF, )
+
+test_mfcc.reshape(n_chunks, chunk_size)
+
+
+print('After reshape: ', test_mfcc)
+'''
