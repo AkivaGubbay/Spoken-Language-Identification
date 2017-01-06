@@ -21,7 +21,8 @@ x = tf.placeholder('float', [None, n_chunks, chunk_size])
 y = tf.placeholder('float')
 
 
-def recurrent_neural_network(x):
+def recurrent_neural_network(x):     # x
+    # global x, y
     layer = {'weights': tf.Variable(tf.random_normal([rnn_size, n_classes])),
              'biases': tf.Variable(tf.random_normal([n_classes]))}
 
@@ -37,20 +38,21 @@ def recurrent_neural_network(x):
     return output
 
 
-def train_neural_network(x):
-    global current_batch, up_to_subfile
+def train_neural_network(x):     #
+    global current_batch, up_to_subfile, validation, num_of_audio_in_language   #, x, y
 
     # Calculating mfccs vectors!!!
-    audio_to_mfccs()
+    directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/parent'       # The 'r' is to prevent white spaces.
+    audio_to_mfccs(directory, 0, num_of_audio_in_language)
 
-    prediction = recurrent_neural_network(x)
+    prediction = recurrent_neural_network(x)     # x
 
     # Define loss and optimizer
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(prediction, y))
     optimizer = tf.train.AdamOptimizer().minimize(cost)     # default learning rate of 0.001
 
     with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer()) # tf.initialize_all_variables()
+        sess.run(tf.global_variables_initializer())     # tf.initialize_all_variables()
 
         for epoch in range(hm_epochs):
             epoch_loss = 0
@@ -58,11 +60,12 @@ def train_neural_network(x):
             for _ in range(int((4 * num_of_audio_in_language) / batch_size)):   # int(mnist.train.num_examples / batch_size)
                 # print('Ok\tepoch:', epoch, 'iter:', _)
                 # epoch_x is of passed as shape: (1 X coeff X time). 1 is actually the batch_size.
-                epoch_x, epoch_y = next_batch()    # mnist.train.next_batch(batch_size)
+                epoch_x, epoch_y = next_batch(num_of_audio_in_language)    # mnist.train.next_batch(batch_size)
                 # print('epoch_x:', epoch_x, '\n')
 
                 # Case: passed the length of data set.
                 if epoch_x is None and epoch_y is None:
+                    print('My ERROR: passed the length of data set.(RRN module).')
                     break
 
                 try:
@@ -76,14 +79,23 @@ def train_neural_network(x):
 
             print('Epoch', epoch, 'completed out of', hm_epochs, 'loss:', epoch_loss)
 
+        # Evaluate model
         correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
         accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
 
+        # ===============================Test & Accuracy================================================================
 
+        print('\n====================Test stage===================================\n')
+
+        # Create mfcc vectors of validation set:
+        # from: amount of audio files in EACH language.
+        # to: from + the size validation(per language).
+        audio_to_mfccs(directory, num_of_audio_in_language, num_of_audio_in_language + validation)     # directory, 0, num_of_audio_in_language
         total_accuracy = 0
-        for i in range(int((4 * num_of_audio_in_language) / batch_size)):
+        for i in range(4 * validation):     # int((4 * num_of_audio_in_language) / batch_size)
+            print('test file:', i)
+            epoch_x, label = next_batch(validation)     # num_of_audio_in_language
 
-            epoch_x, label = next_batch()
 
             try:
                 currect_test = accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label})
@@ -95,8 +107,9 @@ def train_neural_network(x):
             print('Accuracy:',
                   currect_test)  # accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label}))  # accuracy.eval({x: mnist.test.images.reshape((-1, n_chunks, chunk_size)), y: mnist.test.labels}))
 
-        print('Total Accuracy: ', (total_accuracy / (4 * num_of_audio_in_language)) * 100, '%')
+        print('Total Accuracy: ', (total_accuracy / (4 * validation)) * 100, '%')   # (4 * num_of_audio_in_language))
+
+        # ==============================================================================================================
 
 
-
-train_neural_network(x)
+train_neural_network(x)      # x

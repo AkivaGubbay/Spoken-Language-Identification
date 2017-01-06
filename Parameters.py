@@ -6,8 +6,7 @@ TIME_F = 80    # 100
 current_batch = 0
 all_mfcc_vectors = []
 num_of_audio_in_language = 100  # 41
-
-
+validation = 15   # 15
 # ///////////////
 
 hm_epochs = 30   # A lot more..

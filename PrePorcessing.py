@@ -8,24 +8,29 @@ import numpy as np
 
 # if I only calculate the vectors in my batch I wont need to hold all the memory at once.
 
-def audio_to_mfccs():
+def audio_to_mfccs(directory, _from, _to):
     global all_mfcc_vectors, num_of_audio_in_language
 
     all_mfcc_vectors = []
-    parent = r'/media/akiva/Seagate Backup Plus Drive/voxforge/parent'  # The 'r' is to prevent white spaces.
+    parent = directory
     languages = os.listdir(parent)
     print(languages)
     for lang in languages:
         lang_dir = parent + '/' + lang
-        for audio_file in os.listdir(lang_dir)[:num_of_audio_in_language]:
+        print('I am checking language: ', lang)
+        print('from: ', _from, '\tto:', _to)
+        print('list of audio to learn: ', os.listdir(lang_dir)[_from:_to])
+        for audio_file in os.listdir(lang_dir)[_from:_to]:
+            print('Going over audio file: ', audio_file)
             audio_dir = lang_dir + '/' + audio_file
             mfcc = getMfccs(audio_dir)
             all_mfcc_vectors.append(mfcc)
-
+    print('all_mfcc_vectors:', all_mfcc_vectors)
 up_to_subfile = [True, False, False, False]
 
-def next_batch():
-    global current_batch, up_to_subfile
+def next_batch(audio_in_sub_file):
+    global current_batch, up_to_subfile, all_mfcc_vectors
+
     # Determine which sub-file we are up too.
     # So I can pass real classification.
     subfile = 0
@@ -35,11 +40,12 @@ def next_batch():
             break
 
     # Case: finished a sub-file.
-    if current_batch >= num_of_audio_in_language:
+    if current_batch >= audio_in_sub_file:
         # Case: finished all audio files.
         if up_to_subfile[3] is True:
             # Start from beginning for next epoch.
             current_batch = 0
+            subfile = 0
             up_to_subfile = [True, False, False, False]
         # Case: just finished a certain sub-file:
         else:
@@ -53,15 +59,13 @@ def next_batch():
                     break
 
     # Index in 'all_mfcc_vectors':
-    start = (subfile * num_of_audio_in_language) + current_batch
+    start = (subfile * audio_in_sub_file) + current_batch
 
-    '''
     # printing info
     print('current_batch:', current_batch)
     print('subfile:', subfile)
     print('start:', start)
     print('up_to_subfile:', up_to_subfile, '\n')
-    '''
 
     # update 'current_batch' for next time.
     current_batch += 1
