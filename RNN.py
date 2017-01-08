@@ -21,7 +21,7 @@ x = tf.placeholder('float', [None, n_chunks, chunk_size])
 y = tf.placeholder('float')
 
 
-def recurrent_neural_network(x):     # x
+def recurrent_neural_network(x):
     # global x, y
     layer = {'weights': tf.Variable(tf.random_normal([rnn_size, n_classes])),
              'biases': tf.Variable(tf.random_normal([n_classes]))}
@@ -31,25 +31,26 @@ def recurrent_neural_network(x):     # x
     x = tf.split(0, n_chunks, x)
 
     lstm_cell = rnn_cell.BasicLSTMCell(rnn_size,state_is_tuple=True)
+    # dropped_lstm_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_cell, input_keep_prob=input_dropout, output_keep_prob=output_dropout)
     outputs, states = rnn.rnn(lstm_cell, x, dtype=tf.float32)
-
+    # outputs, states = rnn.rnn(dropped_lstm_cell, x, dtype=tf.float32)
     output = tf.matmul(outputs[-1], layer['weights']) + layer['biases']
 
     return output
 
 
-def train_neural_network(x):     #
+def train_neural_network(x):
     global current_batch, up_to_subfile, validation, num_of_audio_in_language   #, x, y
 
     # Calculating mfccs vectors!!!
     directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/parent'       # The 'r' is to prevent white spaces.
     audio_to_mfccs(directory, 0, num_of_audio_in_language)
 
-    prediction = recurrent_neural_network(x)     # x
+    prediction = recurrent_neural_network(x)
 
     # Define loss and optimizer
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(prediction, y))
-    optimizer = tf.train.AdamOptimizer().minimize(cost)     # default learning rate of 0.001
+    optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)     # default learning rate of 0.001
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())     # tf.initialize_all_variables()
@@ -59,6 +60,7 @@ def train_neural_network(x):     #
 
             for _ in range(int((4 * num_of_audio_in_language) / batch_size)):   # int(mnist.train.num_examples / batch_size)
                 # print('Ok\tepoch:', epoch, 'iter:', _)
+
                 # epoch_x is of passed as shape: (1 X coeff X time). 1 is actually the batch_size.
                 epoch_x, epoch_y = next_batch(num_of_audio_in_language)    # mnist.train.next_batch(batch_size)
                 # print('epoch_x:', epoch_x, '\n')
@@ -93,7 +95,7 @@ def train_neural_network(x):     #
         audio_to_mfccs(directory, num_of_audio_in_language, num_of_audio_in_language + validation)     # directory, 0, num_of_audio_in_language
         total_accuracy = 0
         for i in range(4 * validation):     # int((4 * num_of_audio_in_language) / batch_size)
-            print('test file:', i)
+            # print('test file:', i)
             epoch_x, label = next_batch(validation)     # num_of_audio_in_language
 
 
@@ -104,12 +106,30 @@ def train_neural_network(x):     #
                 continue
 
             total_accuracy += currect_test
-            print('Accuracy:',
-                  currect_test)  # accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label}))  # accuracy.eval({x: mnist.test.images.reshape((-1, n_chunks, chunk_size)), y: mnist.test.labels}))
+            # print('Accuracy:',
+            #      currect_test)  # accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label}))  # accuracy.eval({x: mnist.test.images.reshape((-1, n_chunks, chunk_size)), y: mnist.test.labels}))
 
         print('Total Accuracy: ', (total_accuracy / (4 * validation)) * 100, '%')   # (4 * num_of_audio_in_language))
+
+        '''
+        print('========================Testing on training data=============================================')
+        audio_to_mfccs(directory, 0, num_of_audio_in_language)
+        total_accuracy = 0
+        for i in range(int((4 * num_of_audio_in_language) / batch_size)):
+            epoch_x, label = next_batch(num_of_audio_in_language)
+            try:
+                currect_test = accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label})
+            except:
+                print('Accuracy reshape problem.')
+                continue
+
+            total_accuracy += currect_test
+
+        print('Total Accuracy: ', (total_accuracy / (4 * num_of_audio_in_language)) * 100, '%')
+        '''
+
 
         # ==============================================================================================================
 
 
-train_neural_network(x)      # x
+train_neural_network(x)

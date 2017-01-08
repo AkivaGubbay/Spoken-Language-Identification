@@ -17,15 +17,17 @@ def audio_to_mfccs(directory, _from, _to):
     print(languages)
     for lang in languages:
         lang_dir = parent + '/' + lang
-        print('I am checking language: ', lang)
-        print('from: ', _from, '\tto:', _to)
-        print('list of audio to learn: ', os.listdir(lang_dir)[_from:_to])
+        # print('I am checking language: ', lang)
+        # print('from: ', _from, '\tto:', _to)
+        # print('list of audio to learn: ', os.listdir(lang_dir)[_from:_to])
         for audio_file in os.listdir(lang_dir)[_from:_to]:
-            print('Going over audio file: ', audio_file)
+            # print('Going over audio file: ', audio_file)
             audio_dir = lang_dir + '/' + audio_file
             mfcc = getMfccs(audio_dir)
             all_mfcc_vectors.append(mfcc)
-    print('all_mfcc_vectors:', all_mfcc_vectors)
+    # print('all_mfcc_vectors:', all_mfcc_vectors)
+
+
 up_to_subfile = [True, False, False, False]
 
 def next_batch(audio_in_sub_file):
@@ -60,13 +62,13 @@ def next_batch(audio_in_sub_file):
 
     # Index in 'all_mfcc_vectors':
     start = (subfile * audio_in_sub_file) + current_batch
-
+    '''
     # printing info
     print('current_batch:', current_batch)
     print('subfile:', subfile)
     print('start:', start)
     print('up_to_subfile:', up_to_subfile, '\n')
-
+    '''
     # update 'current_batch' for next time.
     current_batch += 1
     # I need to pass epoch_x, epoch_y as numpy arrays:
