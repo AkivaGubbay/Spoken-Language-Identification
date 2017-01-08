@@ -19,6 +19,7 @@ rnn_size = 128  # make this bigger
 
 x = tf.placeholder('float', [None, n_chunks, chunk_size])
 y = tf.placeholder('float')
+keep_prob = tf.placeholder(tf.float32)
 
 
 def recurrent_neural_network(x):
@@ -31,9 +32,7 @@ def recurrent_neural_network(x):
     x = tf.split(0, n_chunks, x)
 
     lstm_cell = rnn_cell.BasicLSTMCell(rnn_size,state_is_tuple=True)
-    # dropped_lstm_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_cell, input_keep_prob=input_dropout, output_keep_prob=output_dropout)
     outputs, states = rnn.rnn(lstm_cell, x, dtype=tf.float32)
-    # outputs, states = rnn.rnn(dropped_lstm_cell, x, dtype=tf.float32)
     output = tf.matmul(outputs[-1], layer['weights']) + layer['biases']
 
     return output
@@ -76,10 +75,10 @@ def train_neural_network(x):
                     print('reshape problem.\tepoch:', epoch, 'iter:', _)
                     continue
 
-                _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
+                _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})  # , keep_prob: 0.7
                 epoch_loss += c
 
-            print('Epoch', epoch, 'completed out of', hm_epochs, 'loss:', epoch_loss)
+            print('***************Epoch', epoch, 'completed out of', hm_epochs, 'loss:', epoch_loss,'**********')
 
         # Evaluate model
         correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
@@ -100,7 +99,7 @@ def train_neural_network(x):
 
 
             try:
-                currect_test = accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label})
+                currect_test = accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label})    # , keep_prob: 1.0
             except:
                 print('Accuracy reshape problem.')
                 continue
@@ -128,8 +127,7 @@ def train_neural_network(x):
         print('Total Accuracy: ', (total_accuracy / (4 * num_of_audio_in_language)) * 100, '%')
         '''
 
-
-        # ==============================================================================================================
+        # =============================================================================================================
 
 
 train_neural_network(x)

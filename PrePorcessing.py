@@ -6,10 +6,96 @@ from Parameters import *
 from Generate_MFCC import getMfccs
 import numpy as np
 
-# if I only calculate the vectors in my batch I wont need to hold all the memory at once.
+def audio_to_mfccs(parent_directory, _from, _to):
+    global all_audio_files
+    languages = os.listdir(parent_directory)
+    all_audio_files = []
+    print(languages)
+    for lang in languages:
+        language_files = []
+        lang_dir = parent_directory + '/' + lang
+        # print(lang_dir)
+        for audio_file in os.listdir(lang_dir)[_from:_to]:
+            audio_dir = lang_dir + '/' + audio_file
+            language_files.append(audio_dir)
+            # print(language_files)
+        all_audio_files.append(language_files)
 
-def audio_to_mfccs(directory, _from, _to):
-    global all_mfcc_vectors, num_of_audio_in_language
+
+'''
+directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/parent'
+audio_to_mfccs(directory, 0, 2)
+for i in range(0,4):
+    print(all_audio_files[i])
+'''
+
+
+
+
+up_to_subfile = [True, False, False, False]
+
+def next_batch(audio_in_sub_file):
+    global current_batch, up_to_subfile, all_audio_files
+
+    # Determine which sub-file we are up too.
+    # So I can pass real classification.
+    subfile = 0
+    for i in range(3, 0, -1):
+        if up_to_subfile[i] is True:
+            subfile = i
+            break
+
+    # Case: finished a sub-file.
+    if current_batch >= audio_in_sub_file:
+        # Case: finished all audio files.
+        if up_to_subfile[3] is True:
+            # Start from beginning for next epoch.
+            current_batch = 0
+            subfile = 0
+            up_to_subfile = [True, False, False, False]
+        # Case: just finished a certain sub-file:
+        else:
+            for i in range(0, 4):
+                if up_to_subfile[i] is False:
+                    # Next sub-file.
+                    up_to_subfile[i] = True
+                    subfile = i
+                    # Start the count again.
+                    current_batch = 0
+                    break
+
+
+    # I need to pass epoch_x, epoch_y as numpy arrays:
+    # batch_y = real classification of audio.
+    try:
+        epoch_y = numpy.zeros(shape=(batch_size, 4))
+        epoch_y[0][subfile] = 1
+    except:
+        print('my Error reshaping batch_y.')
+
+    epoch_x = getMfccs(all_audio_files[subfile][current_batch])
+
+    '''
+    # printing info
+    print('current_batch:', current_batch)
+    print('subfile:', subfile)
+    print('up_to_subfile:', up_to_subfile, '\n')
+    '''
+    # update 'current_batch' for next time.
+    current_batch += 1
+    return epoch_x, epoch_y
+
+
+
+
+
+
+# ===   These function do the same thing but calculate all the mfcc's and holds them all in one list.     ==============
+#====   Tis is much faster but when dealing with lots of lifes I might get memory problems,               ==============
+
+
+def fun1(directory, _from, _to):
+    global all_mfcc_vectors
 
     all_mfcc_vectors = []
     parent = directory
@@ -28,9 +114,10 @@ def audio_to_mfccs(directory, _from, _to):
     # print('all_mfcc_vectors:', all_mfcc_vectors)
 
 
-up_to_subfile = [True, False, False, False]
 
-def next_batch(audio_in_sub_file):
+# up_to_subfile = [True, False, False, False]
+
+def fun2(audio_in_sub_file):
     global current_batch, up_to_subfile, all_mfcc_vectors
 
     # Determine which sub-file we are up too.
@@ -84,51 +171,3 @@ def next_batch(audio_in_sub_file):
     return epoch_x, epoch_y
 
 
-
-# audio_to_mfccs()
-# print(next_batch())
-
-
-'''
-    global current_batch, batch_size, all_mfcc_vectors
-
-    if (current_batch + batch_size) >= len(all_mfcc_vectors):
-        return "My ERROR: to many batches"
-    start = current_batch
-    end = current_batch + batch_size
-    real_classification = classification_in_vector()
-    current_batch += batch_size
-    return all_mfcc_vectors[start:end], real_classification
-
-
-# maybe one hot vector..
-def classification_in_vector():
-    global current_batch
-
-    if (current_batch > 0) and (current_batch < num_of_audio_in_language):
-        return [1, 0, 0, 0]
-    if (current_batch > num_of_audio_in_language) and (current_batch < 2*num_of_audio_in_language):
-        return [0, 1, 0, 0]
-    if (current_batch > 2*num_of_audio_in_language) and (current_batch < 3 * num_of_audio_in_language):
-        return [0, 0, 1, 0]
-    else:
-        return [0, 0, 0, 1]
-
-
-# audio_to_mfccs()
-
-# Make one array of all files.
-# But then I need to deal with the classification.
-# languages = os.listdir(parent)
-# lang_dir = parent + '/' + lang
-
-# list_of_all_audio_files =
-
-
-
-
-# where_i_was = 0
-# def next_batch(batch_size):
-
-
-'''

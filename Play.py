@@ -2,6 +2,12 @@ import numpy as np
 from Generate_MFCC import *
 
 
-problem_file = ''
+a = []
 
-mfcc = getMfccs(problem_file)
+for i in range (0,5):
+    b = []
+    for j in range(0, 10):
+        b.append(j)
+    a.append(b)
+
+print(int(0.15 * 10))
