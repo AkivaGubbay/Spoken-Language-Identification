@@ -5,6 +5,7 @@ from tensorflow.python.ops import rnn, rnn_cell
 # mnist = input_data.read_data_sets("/tmp/data/", one_hot = True)
 from Parameters import *
 from PrePorcessing import *
+from time import time
 
 '''
 hm_epochs = 50   # A lot more..
@@ -31,7 +32,13 @@ def recurrent_neural_network(x):
     x = tf.reshape(x, [-1, chunk_size])
     x = tf.split(0, n_chunks, x)
 
+
+    lstm_cell = tf.nn.rnn_cell.LSTMCell(rnn_size, state_is_tuple=True)
+    lstm_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_cell, input_keep_prob=input_dropout, output_keep_prob=output_dropout)
+    lstm_cell = tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * 3, state_is_tuple=True)    # rnn_size                                   # What does this number mean??
+    '''
     lstm_cell = rnn_cell.BasicLSTMCell(rnn_size,state_is_tuple=True)
+    '''
     outputs, states = rnn.rnn(lstm_cell, x, dtype=tf.float32)
     output = tf.matmul(outputs[-1], layer['weights']) + layer['biases']
 
@@ -75,7 +82,7 @@ def train_neural_network(x):
                     print('reshape problem.\tepoch:', epoch, 'iter:', _)
                     continue
 
-                _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})  # , keep_prob: 0.7
+                _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y, keep_prob: 0.7})  # , keep_prob: 0.7
                 epoch_loss += c
 
             print('***************Epoch', epoch, 'completed out of', hm_epochs, 'loss:', epoch_loss,'**********')
@@ -93,22 +100,24 @@ def train_neural_network(x):
         # to: from + the size validation(per language).
         audio_to_mfccs(directory, num_of_audio_in_language, num_of_audio_in_language + validation)     # directory, 0, num_of_audio_in_language
         total_accuracy = 0
+        total_amount_of_audio = 4 * validation  # KILL THIS
         for i in range(4 * validation):     # int((4 * num_of_audio_in_language) / batch_size)
             # print('test file:', i)
             epoch_x, label = next_batch(validation)     # num_of_audio_in_language
 
 
             try:
-                currect_test = accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label})    # , keep_prob: 1.0
+                currect_test = accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label, keep_prob: 1.0})    # , keep_prob: 1.0
             except:
                 print('Accuracy reshape problem.')
+                total_amount_of_audio -= 1
                 continue
 
             total_accuracy += currect_test
             # print('Accuracy:',
             #      currect_test)  # accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label}))  # accuracy.eval({x: mnist.test.images.reshape((-1, n_chunks, chunk_size)), y: mnist.test.labels}))
 
-        print('Total Accuracy: ', (total_accuracy / (4 * validation)) * 100, '%')   # (4 * num_of_audio_in_language))
+        print('Total Accuracy: ', (total_accuracy / total_amount_of_audio) * 100, '%')   # (4 * num_of_audio_in_language))
 
         '''
         print('========================Testing on training data=============================================')
@@ -130,4 +139,9 @@ def train_neural_network(x):
         # =============================================================================================================
 
 
+
+s = time()
 train_neural_network(x)
+e = time()
+
+print('time: ', e - s)

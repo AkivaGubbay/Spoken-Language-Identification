@@ -6,7 +6,7 @@ from Parameters import *
 from Generate_MFCC import getMfccs
 import numpy as np
 
-def audio_to_mfccs(parent_directory, _from, _to):
+def fun1(parent_directory, _from, _to):
     global all_audio_files
     languages = os.listdir(parent_directory)
     all_audio_files = []
@@ -21,7 +21,6 @@ def audio_to_mfccs(parent_directory, _from, _to):
             # print(language_files)
         all_audio_files.append(language_files)
 
-
 '''
 directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/parent'
 audio_to_mfccs(directory, 0, 2)
@@ -34,7 +33,7 @@ for i in range(0,4):
 
 up_to_subfile = [True, False, False, False]
 
-def next_batch(audio_in_sub_file):
+def fun2(audio_in_sub_file):
     global current_batch, up_to_subfile, all_audio_files
 
     # Determine which sub-file we are up too.
@@ -94,7 +93,7 @@ def next_batch(audio_in_sub_file):
 #====   Tis is much faster but when dealing with lots of lifes I might get memory problems,               ==============
 
 
-def fun1(directory, _from, _to):
+def audio_to_mfccs(directory, _from, _to):
     global all_mfcc_vectors
 
     all_mfcc_vectors = []
@@ -111,13 +110,13 @@ def fun1(directory, _from, _to):
             audio_dir = lang_dir + '/' + audio_file
             mfcc = getMfccs(audio_dir)
             all_mfcc_vectors.append(mfcc)
-    # print('all_mfcc_vectors:', all_mfcc_vectors)
+    print('finished calculating mfcc')
 
 
 
 # up_to_subfile = [True, False, False, False]
 
-def fun2(audio_in_sub_file):
+def next_batch(audio_in_sub_file):
     global current_batch, up_to_subfile, all_mfcc_vectors
 
     # Determine which sub-file we are up too.
