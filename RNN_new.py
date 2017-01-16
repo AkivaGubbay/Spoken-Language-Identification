@@ -1,10 +1,3 @@
-'''
-A Bidirectional Recurrent Neural Network (LSTM) implementation example using TensorFlow library.
-This example is using the MNIST database of handwritten digits (http://yann.lecun.com/exdb/mnist/)
-Long Short Term Memory paper: http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf
-Author: Aymeric Damien
-Project: https://github.com/aymericdamien/TensorFlow-Examples/
-'''
 
 from __future__ import print_function
 
@@ -13,11 +6,6 @@ from tensorflow.python.ops import rnn, rnn_cell
 import numpy as np
 
 
-'''
-To classify images using a bidirectional recurrent neural network, we consider
-every image row as a sequence of pixels. Because MNIST image shape is 28*28px,
-we will then handle 28 sequences of 28 steps for every sample.
-'''
 # Imports:
 import librosa
 import os
@@ -30,6 +18,8 @@ NUM_OF_COEFF = 10   # 10
 TIME_S = 30     # 30
 TIME_F = 110    # 100
 current_batch = 0
+train_directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/two_languages_parent/about_1500_training_files/train'
+test_directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/two_languages_parent/about_1500_training_files/test'
 # all_mfcc_vectors = []
 # all_audio_files = []
 # num_of_audio_in_language = 100  # 100
@@ -48,12 +38,13 @@ current_batch = 0
 
 n_steps = NUM_OF_COEFF
 n_input = (TIME_F - TIME_S)
-n_classes = 4
+n_classes = 2
 n_hidden = 128
 learning_rate = 0.001
-training_iters = 100000000  # 100000
+training_iters = 800000  # 100000    # 4_abount_1500: 800000
 # batch_size = 128
 display_step = 10
+
 
 
 def getMfccs(audio_file_name):
@@ -65,37 +56,42 @@ def getMfccs(audio_file_name):
         print('audio file: ',audio_file_name, ' was not long enuogh.')
         return None
     return mfcc
-'''
-def build_up_to_subfile():
-    global  up_to_subfile
-    up_to_subfile = [True]
-    for i in range(1, n_classes):
-        up_to_subfile.append(False)
-
-build_up_to_subfile()
-'''
-
-
 
 
 def next_batch(directory):
     languages = os.listdir(directory)
+    print(languages)
     all_mfccs = []
     all_one_hot_vectors = []
     amount_of_languages = len(languages)
     count = 0
     for (i, language) in enumerate(languages):
+        print('calculating MFCC for', language, 'language..')
         one_hot_vec = [0] * amount_of_languages
         one_hot_vec[i] = 1
         lang_dir = directory + '/' + language
         for audio_file in os.listdir(lang_dir): # [0:10]:   # limited audio..
             audio_file_path = lang_dir + '/' + audio_file
             mfccs = getMfccs(audio_file_path)
+
+            # Checking if audio file is suitable:
             if mfccs is None:
                 continue
+            skip_this = False
+            for i in range(0, len(mfccs)):   # or NUM_OF_COEFF.
+                if len(mfccs[i]) != n_input:
+                    skip_this = True
+                    break
+            if skip_this is True:
+                continue
+
+            # Audio file is ok - add it:
             all_mfccs.append(mfccs)
             all_one_hot_vectors.append(one_hot_vec)
             count += 1
+
+    print('number of suitable files: ', count)
+    print('converting to numpy..')
     # print('all_mfccs:', all_mfccs)
     # print('all_one_hot_vectors:', all_one_hot_vectors)
     all_mfccs_numpy = np.zeros(shape=(count, n_steps * n_input))
@@ -117,7 +113,7 @@ def next_batch(directory):
             except:
                 print(' np array problem: (', i, ',', int(j/n_input), ',', j % n_input, ')')
                 all_mfccs_numpy[i][j] = 0
-                continue
+                continue    # Don't really need this..
 
     all_one_hot_vectors_numpy = np.zeros(shape=(count, amount_of_languages))
     for i in range(0, count):
@@ -126,41 +122,25 @@ def next_batch(directory):
     return all_mfccs_numpy, all_one_hot_vectors_numpy
 
 
-
-
-
-
-'''
-# Parameters
-learning_rate = 0.001
-training_iters = 100000
-batch_size = 128
-display_step = 10
-
-# Network Parameters
-n_input = 28 # MNIST data input (img shape: 28*28)
-n_steps = 28 # timesteps
-n_hidden = 128 # hidden layer num of features
-n_classes = 10 # MNIST total classes (0-9 digits)
-'''
-
-
-
 # tf Graph input
 x = tf.placeholder("float", [None, n_steps, n_input])
 y = tf.placeholder("float", [None, n_classes])
+keep_prob = tf.placeholder("float")
 
 # Define weights
 weights = {
     # Hidden layer weights => 2*n_hidden because of forward + backward cells
-    'out': tf.Variable(tf.random_normal([2*n_hidden, n_classes]))
+    'out': tf.Variable(tf.random_normal([n_hidden, n_classes]))     # 2*n_hidden
 }
 biases = {
     'out': tf.Variable(tf.random_normal([n_classes]))
 }
 
 
+
+
 def RNN(x, weights, biases):
+    global keep_prob
 
     # Prepare data shape to match `bidirectional_rnn` function requirements
     # Current data input shape: (batch_size, n_steps, n_input)
@@ -187,8 +167,16 @@ def RNN(x, weights, biases):
         outputs = rnn.bidirectional_rnn(lstm_fw_cell, lstm_bw_cell, x,
                                         dtype=tf.float32)
 
-    # Linear activation, using rnn inner loop last output
-    return tf.matmul(outputs[-1], weights['out']) + biases['out']
+    # Fully connected layer:
+    fully_connected_layer = {'weights': tf.Variable(tf.random_normal([2*n_hidden, n_hidden])),
+                             'biases': tf.Variable(tf.constant(0.1, shape=[n_hidden]))}    # 2*n_hidden
+
+    z = tf.matmul(outputs[-1], fully_connected_layer['weights']) + fully_connected_layer['biases']
+    z = tf.nn.relu(z)
+    z = tf.nn.dropout(z, keep_prob)
+
+    z1 = tf.matmul(z, weights['out']) + biases['out']
+    return z1
 
 s = time()
 pred = RNN(x, weights, biases)
@@ -204,17 +192,23 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 # Initializing the variables
 init = tf.global_variables_initializer()
 
-train_directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/train aviad'  # aviad
 print('building batches..')
 batch_x, batch_y = next_batch(train_directory)
-print('first batch_x: ', batch_x)
-print('first batch_y: ', batch_y)
 print('got the batches!')
 batch_size = len(batch_x)
-
+print('\n================ Conducting Training =====================')
 # Launch the graph
 with tf.Session() as sess:
     sess.run(init)
+    '''
+    # save model:
+    saver = tf.train.Saver()
+    saver.save(sess, 'my-model')
+    # load model:
+    new_saver = tf.train.import_meta_graph('my-model.meta')
+    new_saver.restore(sess, tf.train.latest_checkpoint('./'))
+    '''
+
     step = 1
     # Keep training until reach max iterations
     while step * batch_size < training_iters:
@@ -222,24 +216,29 @@ with tf.Session() as sess:
         # print('batch_x: ', batch_x)
         batch_x = batch_x.reshape(batch_size, n_steps, n_input)
         # Run optimization op (backprop)
-        sess.run(optimizer, feed_dict={x: batch_x, y: batch_y})
+        sess.run(optimizer, feed_dict={x: batch_x, y: batch_y, keep_prob: 0.6})  #, keep_prob: 0.9
         if step % display_step == 0:
             # Calculate batch accuracy
-            acc = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y})
+            acc = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y, keep_prob: 1.0})
             # Calculate batch loss
-            loss = sess.run(cost, feed_dict={x: batch_x, y: batch_y})
-            print("Iter " + str(step*batch_size) + ", Minibatch Loss= " + \
+            loss = sess.run(cost, feed_dict={x: batch_x, y: batch_y, keep_prob: 1.0})
+            print("Iter " + str(step*batch_size) + ", Loss= " + \
                   "{:.6f}".format(loss) + ", Training Accuracy= " + \
                   "{:.5f}".format(acc))
+
+            if acc == 1.0:
+                print('Exited early - reached high training accuracy.')
+                break
+
         step += 1
     print("Optimization Finished!")
 
+    print('\n================ Testing Stage ===========================')
 
-    test_directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/test aviad'
     batch_x, batch_y = next_batch(test_directory)
     batch_x = batch_x.reshape((-1, n_steps, n_input))
-    print("Testing Accuracy:", \
-          sess.run(accuracy, feed_dict={x: batch_x, y: batch_y}))
+    print("\nTesting Accuracy:", \
+          sess.run(accuracy, feed_dict={x: batch_x, y: batch_y, keep_prob: 1.0}))   # , keep_prob: 1.0
 
 
 e = time()
