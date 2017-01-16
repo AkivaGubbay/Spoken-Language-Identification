@@ -22,6 +22,8 @@ we will then handle 28 sequences of 28 steps for every sample.
 import librosa
 import os
 import numpy as np
+from time import time
+
 
 # Parameters:
 NUM_OF_COEFF = 10   # 10
@@ -49,7 +51,7 @@ n_input = (TIME_F - TIME_S)
 n_classes = 4
 n_hidden = 128
 learning_rate = 0.001
-training_iters = 100000
+training_iters = 100000000  # 100000
 # batch_size = 128
 display_step = 10
 
@@ -86,7 +88,7 @@ def next_batch(directory):
         one_hot_vec = [0] * amount_of_languages
         one_hot_vec[i] = 1
         lang_dir = directory + '/' + language
-        for audio_file in os.listdir(lang_dir):
+        for audio_file in os.listdir(lang_dir): # [0:10]:   # limited audio..
             audio_file_path = lang_dir + '/' + audio_file
             mfccs = getMfccs(audio_file_path)
             if mfccs is None:
@@ -103,12 +105,20 @@ def next_batch(directory):
             all_mfccs_numpy[i][j] = all_mfccs[i][j]
         '''
         for j in range(0, n_steps * n_input):
+            # print('i:', i)
+            # print('j:', j)
+            # print('j/n_input:', int(j / n_input))
+            # print('j % n_input:', j % n_input)
+
+            # print('\nall_mfccs[i][int(j/n_input)][j % n_input]:', all_mfccs[i][int(j / n_input)][j % n_input])
+            # print('all_mfccs_numpy[i][j]:', all_mfccs_numpy[i][j])
             try:
-                all_mfccs_numpy[i][j] = all_mfccs[i][j/n_input][j%n_input]
+                all_mfccs_numpy[i][j] = all_mfccs[i][int(j/n_input)][j % n_input]
             except:
-                print('j:', j)
-                print('j/n_input:', j/n_input)
-                print('j % n_input:', j % n_input)
+                print(' np array problem: (', i, ',', int(j/n_input), ',', j % n_input, ')')
+                all_mfccs_numpy[i][j] = 0
+                continue
+
     all_one_hot_vectors_numpy = np.zeros(shape=(count, amount_of_languages))
     for i in range(0, count):
         for j in range(0, amount_of_languages):
@@ -180,6 +190,7 @@ def RNN(x, weights, biases):
     # Linear activation, using rnn inner loop last output
     return tf.matmul(outputs[-1], weights['out']) + biases['out']
 
+s = time()
 pred = RNN(x, weights, biases)
 
 # Define loss and optimizer
@@ -193,7 +204,7 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 # Initializing the variables
 init = tf.global_variables_initializer()
 
-train_directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/train'
+train_directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/train aviad'  # aviad
 print('building batches..')
 batch_x, batch_y = next_batch(train_directory)
 print('first batch_x: ', batch_x)
@@ -224,8 +235,12 @@ with tf.Session() as sess:
     print("Optimization Finished!")
 
 
-    test_directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/test'
+    test_directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/test aviad'
     batch_x, batch_y = next_batch(test_directory)
     batch_x = batch_x.reshape((-1, n_steps, n_input))
     print("Testing Accuracy:", \
           sess.run(accuracy, feed_dict={x: batch_x, y: batch_y}))
+
+
+e = time()
+print('\n\ntime: ', (e - s)/60, 'min')

@@ -2,6 +2,9 @@ import numpy as np
 from Generate_MFCC import *
 
 a = [[1, 2, 3], [4, 5, 6]]
+
+print('a[0][3/4] = ', a[0][3/4])
+
 '''
 a = a.reshape(1, 1, 6)
 print(a, '\n')
