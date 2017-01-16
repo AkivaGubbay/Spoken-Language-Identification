@@ -88,7 +88,7 @@ def train_neural_network(x):
         for epoch in range(hm_epochs):
             epoch_loss = 0
 
-            for _ in range(int((4 * num_of_audio_in_language) / batch_size)):
+            for _ in range(int(n_classes * num_of_audio_in_language)):
                 # print('Ok\tepoch:', epoch, 'iter:', _)
 
                 # epoch_x is of passed as shape: (1 X coeff X time). 1 is actually the batch_size.
@@ -127,7 +127,7 @@ def train_neural_network(x):
         accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
 
         # ===============================Test & Accuracy================================================================
-
+        '''
         print('\n====================Test stage===================================\n')
 
         # Create mfcc vectors of validation set:
@@ -136,7 +136,9 @@ def train_neural_network(x):
         audio_to_mfccs(directory, num_of_audio_in_language, num_of_audio_in_language + validation)     # directory, 0, num_of_audio_in_language
         total_accuracy = 0
         total_amount_of_audio = 4 * validation  # KILL THIS
-        for i in range(4 * validation):     # int((4 * num_of_audio_in_language) / batch_size)
+
+        confusion_matrix = [0, 0, 0, 0]
+        for i in range(n_classes * validation):     # int((4 * num_of_audio_in_language) / batch_size)
             # print('test file:', i)
             epoch_x, label = next_batch(validation)     # num_of_audio_in_language
 
@@ -149,16 +151,21 @@ def train_neural_network(x):
                 continue
 
             total_accuracy += currect_test
+            confusion_matrix[int(i / validation)] += currect_test
+
             # print('Accuracy:',
             #      currect_test)  # accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label}))  # accuracy.eval({x: mnist.test.images.reshape((-1, n_chunks, chunk_size)), y: mnist.test.labels}))
 
-        print('Total Accuracy: ', (total_accuracy / total_amount_of_audio) * 100, '%')   # (4 * num_of_audio_in_language))
-
+        print('Total Accuracy: ', (total_accuracy / total_amount_of_audio) * 100, '%')
+        print('English:', confusion_matrix[0])
+        print('French:', confusion_matrix[1])
+        print('German:', confusion_matrix[2])
+        print('Spanish:', confusion_matrix[3])
         '''
         print('========================Testing on training data=============================================')
         audio_to_mfccs(directory, 0, num_of_audio_in_language)
         total_accuracy = 0
-        for i in range(int((4 * num_of_audio_in_language) / batch_size)):
+        for i in range(int((n_classes * num_of_audio_in_language) / batch_size)):
             epoch_x, label = next_batch(num_of_audio_in_language)
             try:
                 currect_test = accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label})
@@ -168,10 +175,9 @@ def train_neural_network(x):
 
             total_accuracy += currect_test
 
-        print('Total Accuracy: ', (total_accuracy / (4 * num_of_audio_in_language)) * 100, '%')
+        print('Total Accuracy: ', (total_accuracy / (n_classes * num_of_audio_in_language)) * 100, '%')
 
         # =============================================================================================================
-        '''
 
 
 s = time()

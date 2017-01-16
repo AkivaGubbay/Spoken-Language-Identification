@@ -1,13 +1,15 @@
 import numpy as np
 from Generate_MFCC import *
 
+a = [[1, 2, 3], [4, 5, 6]]
+'''
+a = a.reshape(1, 1, 6)
+print(a, '\n')
+'''
 
-a = []
 
-for i in range(0, 5):
-    b = []
-    for j in range(0, 10):
-        b.append(j)
-    a.append(b)
-
-print(int(0.15 * 10))
+mfcc = getMfccs('audio/per0003.wav')
+mfcc = mfcc[0:2, 0:3]
+print('before reshape:\n', mfcc, '\n')
+mfcc = mfcc.reshape(1, 1, 6)
+print('\nafter reshape:\n', mfcc, '\n')
