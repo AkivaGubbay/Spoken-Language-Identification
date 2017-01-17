@@ -2,11 +2,9 @@
 from __future__ import print_function
 import tensorflow as tf
 from tensorflow.python.ops import rnn, rnn_cell
-import os
-import numpy as np
 from PrePorcessing import *
 from time import time
-
+# ========================================================== keep prob==========================
 
 # tf Graph input
 x = tf.placeholder("float", [None, n_steps, n_input])
@@ -82,7 +80,9 @@ print('building batches..')
 batch_x, batch_y = next_batch(train_directory)
 print('got the batches!')
 batch_size = len(batch_x)
+
 print('\n================ Conducting Training =====================')
+
 # Launch the graph
 with tf.Session() as sess:
     sess.run(init)
