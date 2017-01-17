@@ -1,4 +1,37 @@
+# Parameters:
+NUM_OF_COEFF = 10   # 10
+TIME_S = 50     # 50
+TIME_F = 130    # 130
+current_batch = 0
+train_directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/two_languages_parent/150_training_files/train'
+test_directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/two_languages_parent/150_training_files/test'
 
+
+
+n_steps = NUM_OF_COEFF
+n_input = (TIME_F - TIME_S)
+n_classes = 2
+n_hidden = 128
+learning_rate = 0.001
+training_iters = 10000000  # 100000    # 4_abount_1500: 800000
+# batch_size = 128
+display_step = 10
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''
 # /////////////////////////
 NUM_OF_COEFF = 10   # 10
 TIME_S = 30     # 30
@@ -21,3 +54,6 @@ up_to_subfile = []
 
 
 num_of_batches_in_language = int(num_of_audio_in_language / batch_size)
+
+
+'''

@@ -1,187 +1,131 @@
+# Imports:
+from __future__ import print_function
 import tensorflow as tf
-import numpy as np
-# from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow.python.ops import rnn, rnn_cell
-# mnist = input_data.read_data_sets("/tmp/data/", one_hot = True)
-from Parameters import *
+import os
+import numpy as np
 from PrePorcessing import *
 from time import time
 
 
-x = tf.placeholder('float', [None, n_chunks, chunk_size])
-y = tf.placeholder('float')
-keep_prob = tf.placeholder(tf.float32)
+# tf Graph input
+x = tf.placeholder("float", [None, n_steps, n_input])
+y = tf.placeholder("float", [None, n_classes])
+keep_prob = tf.placeholder("float")
+
+# Define weights
+weights = {
+    # Hidden layer weights => 2*n_hidden because of forward + backward cells
+    'out': tf.Variable(tf.random_normal([n_hidden, n_classes]))     # 2*n_hidden
+}
+biases = {
+    'out': tf.Variable(tf.random_normal([n_classes]))
+}
 
 
-def recurrent_neural_network(x):
 
-    # ======= Fully connected layers ===========
 
-    layer1 = {'weights': tf.Variable(tf.random_normal([rnn_size, 80])),
-              'biases': tf.Variable(tf.constant(0.1, shape=[80]))}
+def RNN(x, weights, biases):
+    global keep_prob
 
-    layer2 = {'weights': tf.Variable(tf.random_normal([80, 60])),
-              'biases': tf.Variable(tf.constant(0.1, shape=[60]))}
+    # Prepare data shape to match `bidirectional_rnn` function requirements
+    # Current data input shape: (batch_size, n_steps, n_input)
+    # Required shape: 'n_steps' tensors list of shape (batch_size, n_input)
 
-    layer3 = {'weights': tf.Variable(tf.random_normal([60, 30])),
-              'biases': tf.Variable(tf.constant(0.1, shape=[30]))}
-
-    layer4 = {'weights': tf.Variable(tf.random_normal([30, 10])),
-              'biases': tf.Variable(tf.constant(0.1, shape=[10]))}
-
-    # ==========================================
-
-    layer = {'weights': tf.Variable(tf.random_normal([80, n_classes])),
-             'biases': tf.Variable(tf.random_normal([n_classes]))}  # rnn_size
-
+    # Permuting batch_size and n_steps
     x = tf.transpose(x, [1, 0, 2])
-    x = tf.reshape(x, [-1, chunk_size])
-    x = tf.split(0, n_chunks, x)
+    # Reshape to (n_steps*batch_size, n_input)
+    x = tf.reshape(x, [-1, n_input])
+    # Split to get a list of 'n_steps' tensors of shape (batch_size, n_input)
+    x = tf.split(0, n_steps, x)
 
-    '''
-    lstm_cell = tf.nn.rnn_cell.LSTMCell(rnn_size, state_is_tuple=True)
-    lstm_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_cell, input_keep_prob=input_dropout, output_keep_prob=output_dropout)
-    lstm_cell = tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * 9, state_is_tuple=True)    # rnn_size  # 3                                 # What does this number mean??
-    '''
+    # Define lstm cells with tensorflow
+    # Forward direction cell
+    lstm_fw_cell = rnn_cell.BasicLSTMCell(n_hidden, forget_bias=1.0)
+    # Backward direction cell
+    lstm_bw_cell = rnn_cell.BasicLSTMCell(n_hidden, forget_bias=1.0)
 
-    lstm_cell = rnn_cell.BasicLSTMCell(rnn_size, state_is_tuple=True)
+    # Get lstm cell output
+    try:
+        outputs, _, _ = rnn.bidirectional_rnn(lstm_fw_cell, lstm_bw_cell, x,
+                                              dtype=tf.float32)
+    except Exception: # Old TensorFlow version only returns outputs not states
+        outputs = rnn.bidirectional_rnn(lstm_fw_cell, lstm_bw_cell, x,
+                                        dtype=tf.float32)
 
-    outputs, states = rnn.rnn(lstm_cell, x, dtype=tf.float32)
+    # Fully connected layer:
+    fully_connected_layer = {'weights': tf.Variable(tf.random_normal([2*n_hidden, n_hidden])),
+                             'biases': tf.Variable(tf.constant(0.1, shape=[n_hidden]))}    # 2*n_hidden
 
-    output1 = tf.matmul(outputs[-1], layer1['weights']) + layer1['biases']
-    output1 = tf.nn.relu(output1)
-    output1 = tf.nn.dropout(output1, keep_prob)
-    '''
-    output2 = tf.matmul(output1, layer2['weights']) + layer2['biases']
-    output2 = tf.nn.relu(output2)
+    z = tf.matmul(outputs[-1], fully_connected_layer['weights']) + fully_connected_layer['biases']
+    z = tf.nn.relu(z)
+    z = tf.nn.dropout(z, keep_prob)
 
-    output3 = tf.matmul(output2, layer3['weights']) + layer3['biases']
-    output3 = tf.nn.relu(output3)
-
-    output4 = tf.matmul(output3, layer4['weights']) + layer4['biases']
-    output4 = tf.nn.relu(output4)
-    '''
-
-    output = tf.matmul(output1, layer['weights']) + layer['biases']     # outputs[-1]
-
-    return output
-
-
-def train_neural_network(x):
-    global current_batch, up_to_subfile, validation, num_of_audio_in_language, learning_rate
-
-    # Calculating mfccs vectors!!!
-    directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/parent'       # The 'r' is to prevent white spaces.
-    audio_to_mfccs(directory, 0, num_of_audio_in_language)
-
-    prediction = recurrent_neural_network(x)
-
-    # Define loss and optimizer
-    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(prediction, y))
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)      # Amos said to try gradient decent. AdamOptimizer
-
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        first = True    # To reduce learning-rate once.
-        second = True   # To reduce learning-rate twice.
-
-        for epoch in range(hm_epochs):
-            epoch_loss = 0
-
-            for _ in range(int(n_classes * num_of_audio_in_language)):
-                # print('Ok\tepoch:', epoch, 'iter:', _)
-
-                # epoch_x is of passed as shape: (1 X coeff X time). 1 is actually the batch_size.
-                epoch_x, epoch_y = next_batch(num_of_audio_in_language)
-                # print('epoch_x:', epoch_x, '\n')
-
-                # Case: passed the length of data set.
-                if epoch_x is None and epoch_y is None:
-                    print('My ERROR: passed the length of data set.(RRN module).')
-                    break
-
-                try:
-                    epoch_x = epoch_x.reshape(batch_size, n_chunks, chunk_size)
-                except:
-                    print('reshape problem.\tepoch:', epoch, 'iter:', _)
-                    continue
-
-                _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y, keep_prob: 0.9})  # , keep_prob: 0.7
-                epoch_loss += c
-
-            print('*************** Epoch', epoch, 'completed out of', hm_epochs, 'loss:', epoch_loss, '**********')
-
-            if epoch_loss < 350 and first is True:
-                learning_rate /= 100
-                first = False
-            elif epoch_loss < 80 and second is True:
-                learning_rate /= 100
-                second = False
-            # Stop training stage early:
-            elif epoch_loss < 0.01:
-                break
-
-
-        # Evaluate model
-        correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
-        accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
-
-        # ===============================Test & Accuracy================================================================
-        '''
-        print('\n====================Test stage===================================\n')
-
-        # Create mfcc vectors of validation set:
-        # from: amount of audio files in EACH language.
-        # to: from + the size validation(per language).
-        audio_to_mfccs(directory, num_of_audio_in_language, num_of_audio_in_language + validation)     # directory, 0, num_of_audio_in_language
-        total_accuracy = 0
-        total_amount_of_audio = 4 * validation  # KILL THIS
-
-        confusion_matrix = [0, 0, 0, 0]
-        for i in range(n_classes * validation):     # int((4 * num_of_audio_in_language) / batch_size)
-            # print('test file:', i)
-            epoch_x, label = next_batch(validation)     # num_of_audio_in_language
-
-
-            try:
-                currect_test = accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label, keep_prob: 1.0})    # , keep_prob: 1.0
-            except:
-                print('Accuracy reshape problem.')
-                total_amount_of_audio -= 1
-                continue
-
-            total_accuracy += currect_test
-            confusion_matrix[int(i / validation)] += currect_test
-
-            # print('Accuracy:',
-            #      currect_test)  # accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label}))  # accuracy.eval({x: mnist.test.images.reshape((-1, n_chunks, chunk_size)), y: mnist.test.labels}))
-
-        print('Total Accuracy: ', (total_accuracy / total_amount_of_audio) * 100, '%')
-        print('English:', confusion_matrix[0])
-        print('French:', confusion_matrix[1])
-        print('German:', confusion_matrix[2])
-        print('Spanish:', confusion_matrix[3])
-        '''
-        print('========================Testing on training data=============================================')
-        audio_to_mfccs(directory, 0, num_of_audio_in_language)
-        total_accuracy = 0
-        for i in range(int((n_classes * num_of_audio_in_language) / batch_size)):
-            epoch_x, label = next_batch(num_of_audio_in_language)
-            try:
-                currect_test = accuracy.eval({x: epoch_x.reshape((-1, n_chunks, chunk_size)), y: label})
-            except:
-                print('Accuracy reshape problem.')
-                continue
-
-            total_accuracy += currect_test
-
-        print('Total Accuracy: ', (total_accuracy / (n_classes * num_of_audio_in_language)) * 100, '%')
-
-        # =============================================================================================================
-
+    z1 = tf.matmul(z, weights['out']) + biases['out']
+    return z1
 
 s = time()
-train_neural_network(x)
-e = time()
+pred = RNN(x, weights, biases)
 
+# Define loss and optimizer
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, y))
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+
+# Evaluate model
+correct_pred = tf.equal(tf.argmax(pred,1), tf.argmax(y,1))
+accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
+# Initializing the variables
+init = tf.global_variables_initializer()
+
+print('building batches..')
+batch_x, batch_y = next_batch(train_directory)
+print('got the batches!')
+batch_size = len(batch_x)
+print('\n================ Conducting Training =====================')
+# Launch the graph
+with tf.Session() as sess:
+    sess.run(init)
+    '''
+    # save model:
+    saver = tf.train.Saver()
+    saver.save(sess, 'my-model')
+    # load model:
+    new_saver = tf.train.import_meta_graph('my-model.meta')
+    new_saver.restore(sess, tf.train.latest_checkpoint('./'))
+    '''
+
+    step = 1
+    # Keep training until reach max iterations
+    while step * batch_size < training_iters:
+        # Reshape data to get 28 seq of 28 elements
+        # print('batch_x: ', batch_x)
+        batch_x = batch_x.reshape(batch_size, n_steps, n_input)
+        # Run optimization op (backprop)
+        sess.run(optimizer, feed_dict={x: batch_x, y: batch_y, keep_prob: 0.6})  #, keep_prob: 0.9
+        if step % display_step == 0:
+            # Calculate batch accuracy
+            acc = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y, keep_prob: 1.0})
+            # Calculate batch loss
+            loss = sess.run(cost, feed_dict={x: batch_x, y: batch_y, keep_prob: 1.0})
+            print("Iter " + str(step*batch_size) + ", Loss= " + \
+                  "{:.6f}".format(loss) + ", Training Accuracy= " + \
+                  "{:.5f}".format(acc))
+
+            if acc == 1.0:
+                print('Exited early - reached high training accuracy.')
+                break
+
+        step += 1
+    print("Optimization Finished!")
+
+    print('\n================ Testing Stage ===========================')
+
+    batch_x, batch_y = next_batch(test_directory)
+    batch_x = batch_x.reshape((-1, n_steps, n_input))
+    print("\nTesting Accuracy:", \
+          sess.run(accuracy, feed_dict={x: batch_x, y: batch_y, keep_prob: 1.0}))   # , keep_prob: 1.0
+
+
+e = time()
 print('\n\ntime: ', (e - s)/60, 'min')

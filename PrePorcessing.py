@@ -1,11 +1,74 @@
 import os
-
-import numpy
-
 from Parameters import *
 from Generate_MFCC import getMfccs
 import numpy as np
 
+
+def next_batch(directory):
+    languages = os.listdir(directory)
+    print(languages)
+    all_mfccs = []
+    all_one_hot_vectors = []
+    amount_of_languages = len(languages)
+    count = 0
+    for (i, language) in enumerate(languages):
+        print('calculating MFCC for', language, 'language..')
+        one_hot_vec = [0] * amount_of_languages
+        one_hot_vec[i] = 1
+        lang_dir = directory + '/' + language
+        for audio_file in os.listdir(lang_dir): # [0:10]:   # limited audio..
+            audio_file_path = lang_dir + '/' + audio_file
+            mfccs = getMfccs(audio_file_path)
+
+            # Checking if audio file is suitable:
+            if mfccs is None:
+                continue
+            skip_this = False
+            for i in range(0, len(mfccs)):   # or NUM_OF_COEFF.
+                if len(mfccs[i]) != n_input:
+                    skip_this = True
+                    break
+            if skip_this is True:
+                continue
+
+            # Audio file is ok - add it:
+            all_mfccs.append(mfccs)
+            all_one_hot_vectors.append(one_hot_vec)
+            count += 1
+
+    print('number of suitable files: ', count)
+    print('converting to numpy..')
+    # print('all_mfccs:', all_mfccs)
+    # print('all_one_hot_vectors:', all_one_hot_vectors)
+    all_mfccs_numpy = np.zeros(shape=(count, n_steps * n_input))
+    for i in range(0, count):
+        '''
+        for j in range(0, n_steps * n_input):
+            all_mfccs_numpy[i][j] = all_mfccs[i][j]
+        '''
+        for j in range(0, n_steps * n_input):
+            # print('i:', i)
+            # print('j:', j)
+            # print('j/n_input:', int(j / n_input))
+            # print('j % n_input:', j % n_input)
+
+            # print('\nall_mfccs[i][int(j/n_input)][j % n_input]:', all_mfccs[i][int(j / n_input)][j % n_input])
+            # print('all_mfccs_numpy[i][j]:', all_mfccs_numpy[i][j])
+            try:
+                all_mfccs_numpy[i][j] = all_mfccs[i][int(j/n_input)][j % n_input]
+            except:
+                print(' np array problem: (', i, ',', int(j/n_input), ',', j % n_input, ')')
+                all_mfccs_numpy[i][j] = 0
+                continue    # Don't really need this..
+
+    all_one_hot_vectors_numpy = np.zeros(shape=(count, amount_of_languages))
+    for i in range(0, count):
+        for j in range(0, amount_of_languages):
+            all_one_hot_vectors_numpy[i][j] = all_one_hot_vectors[i][j]
+    return all_mfccs_numpy, all_one_hot_vectors_numpy
+
+
+'''
 def fun1(parent_directory, _from, _to):
     global all_audio_files
     languages = os.listdir(parent_directory)
@@ -21,12 +84,7 @@ def fun1(parent_directory, _from, _to):
             # print(language_files)
         all_audio_files.append(language_files)
 
-'''
-directory = r'/media/akiva/Seagate Backup Plus Drive/voxforge/parent'
-audio_to_mfccs(directory, 0, 2)
-for i in range(0,4):
-    print(all_audio_files[i])
-'''
+
 def build_up_to_subfile():
     global  up_to_subfile
     up_to_subfile = [True]
@@ -76,12 +134,6 @@ def fun2(audio_in_sub_file):
 
     epoch_x = getMfccs(all_audio_files[subfile][current_batch])
 
-    '''
-    # printing info
-    print('current_batch:', current_batch)
-    print('subfile:', subfile)
-    print('up_to_subfile:', up_to_subfile, '\n')
-    '''
     # update 'current_batch' for next time.
     current_batch += 1
     return epoch_x, epoch_y
@@ -150,13 +202,7 @@ def next_batch(audio_in_sub_file):
 
     # Index in 'all_mfcc_vectors':
     start = (subfile * audio_in_sub_file) + current_batch
-    '''
-    # printing info
-    print('current_batch:', current_batch)
-    print('subfile:', subfile)
-    print('start:', start)
-    print('up_to_subfile:', up_to_subfile, '\n')
-    '''
+
     # update 'current_batch' for next time.
     current_batch += 1
     # I need to pass epoch_x, epoch_y as numpy arrays:
@@ -171,7 +217,7 @@ def next_batch(audio_in_sub_file):
     epoch_x = all_mfcc_vectors[start]
     return epoch_x, epoch_y
 
-
+'''
 
 
 
