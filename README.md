@@ -1,3 +1,3 @@
 # Spoken-language-identification
 
-coming soon..
+See the project paper
